@@ -7,6 +7,8 @@ from gtts import gTTS
 from flask import send_from_directory
 import openpyxl
 import smtplib
+from email.mime.text import MIMEText
+
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -73,50 +75,51 @@ def pz():
 @app.route('/loader')
 def loader():
     return render_template("loader.html")
-@app.route('/getdata', methods=['POST'])
-def getdata():
-    name = request.form.get('name')
-    email = request.form.get('email')
-    message = request.form.get('message')
+# @app.route('/getdata', methods=['POST'])
+# def getdata():
+#     name = request.form.get('name')
+#     email = request.form.get('email')
+#     message = request.form.get('message')
 
-    if not email:  # Check if email is None or empty
-        return "Error: Email address is required!", 400
+#     if not email:  # Check if email is None or empty
+#         return "Error: Email address is required!", 400
 
-    # Define the Excel file
-    excel_file = "form_data.xlsx"
+#     # Define the Excel file
+#     excel_file = "form_data.xlsx"
 
-    try:
-        workbook = openpyxl.load_workbook(excel_file)  
-        sheet = workbook.active
-    except FileNotFoundError:
-        workbook = openpyxl.Workbook()
-        sheet = workbook.active
-        sheet.append(["name", "email", "message"]) 
+#     try:
+#         workbook = openpyxl.load_workbook(excel_file)
+#         sheet = workbook.active
+#     except FileNotFoundError:
+#         workbook = openpyxl.Workbook()
+#         sheet = workbook.active
+#         sheet.append(["name", "email", "message"])
 
-    sheet.append([name, email, message])
-    workbook.save(excel_file)  
+#     sheet.append([name, email, message])
+#     workbook.save(excel_file)
 
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)  # Corrected port
-        server.starttls()
-        server.login('saichechare63@gmail.com', 'tsbs dspp rjln quud')  # Use App Password instead of actual password
-        server.sendmail(
-            'saichechare63@gmail.com', 
-            email, 
-            f'Subject: Thank You!\n\nThank you for sending a message. You will get a reply as soon as possible...\nYour Subject: {message}'
-        )
-        server.quit()
-    except Exception as e:
-        return f"Error sending email: {e}", 500
+#     try:
+#         server = smtplib.SMTP('smtp.gmail.com', 587)  # Corrected port
+#         server.starttls()
+#         server.login('saichechare63@gmail.com', 'tsbs dspp rjln quud')  # Use App Password instead of actual password
+#         server.sendmail(
+#             'saichechare63@gmail.com',
+#             email,
+#             f'Subject: Thank You!\n\nThank you for sending a message. You will get a reply as soon as possible...\nYour Subject: {message}'
+#         )
+#         server.quit()
+#     except Exception as e:
+#         return f"Error sending email: {e}", 500
 
-    return render_template('index.html')
+#     return render_template('index.html')
+
 @app.route('/gemini-response', methods=['POST'])
 def get_gemini_response():
     global last_response  # Access the global variable
 
     try:
         user_message = request.json['message']
-        
+
         if not user_message:
             return jsonify({"error": "Message is required"}), 400
 
@@ -125,7 +128,7 @@ def get_gemini_response():
         formatted_response = format_response(ai_response)
 
         # Store the response in a global variable
-        last_response["text"] = formatted_response  
+        last_response["text"] = formatted_response
 
         return jsonify({"response": formatted_response})
 
@@ -134,12 +137,12 @@ def get_gemini_response():
         return jsonify({"error": "Internal Server Error"}), 500
 
 def format_response(response_text):
-    response_text = re.sub(r'\*\*(.*?)\*\*', r'\1', response_text)  
-    response_text = re.sub(r'__(.*?)__', r'\1', response_text)  
-    response_text = re.sub(r'\s+', ' ', response_text)  
+    response_text = re.sub(r'\*\*(.*?)\*\*', r'\1', response_text)
+    response_text = re.sub(r'__(.*?)__', r'\1', response_text)
+    response_text = re.sub(r'\s+', ' ', response_text)
 
     tts = gTTS(text=response_text, lang='en', lang_check=True)
-    tts.save(r'E:\\new hackthone shegoan\\static\\audio.mp3')
+    tts.save('/home/LearnwithAI/learnwithAI/static/audio.mp3')
 
     return response_text
 
@@ -193,12 +196,66 @@ def format_mcq_output(mcq_text):
                 options[i] = options[i].replace("*", "").strip() + " (Correct)"
                 found_correct = True
 
-        if not found_correct and options:  
+        if not found_correct and options:
             options[0] += " (Correct)"  # Mark the first option correct if none is marked
 
         formatted_questions.append("\n".join([question_text] + options))
 
     return "\n\n".join(formatted_questions)
+
+
+
+
+
+@app.route('/getdata', methods=['POST'])
+def getdata():
+    parent_name = request.form.get("parent_name")
+    email = request.form.get("email")
+    child_age = request.form.get("child_age")
+    interest = request.form.get("interest")
+    message = request.form.get("message")
+
+    if not email:
+        return "Error: Email address is required!", 400
+
+    excel_file = "form_data.xlsx"
+    try:
+        workbook = openpyxl.load_workbook(excel_file)
+        sheet = workbook.active
+    except FileNotFoundError:
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.append(["Parent Name", "Email", "Child Age", "Interest", "Message"])
+
+    sheet.append([parent_name, email, child_age, interest, message])
+    workbook.save(excel_file)
+
+    # Send email
+    try:
+        msg_content = (
+            f"Hello {parent_name},\n\n"
+            f"Thank you for reaching out!\n"
+            f"Child Age: {child_age}\n"
+            f"Interest: {interest}\n"
+            f"Message: {message}\n\n"
+            f"We’ll get back to you soon.\n\n"
+            f"Best Regards,\nTeam"
+        )
+        msg = MIMEText(msg_content, "plain", "utf-8")
+        msg["Subject"] = "Thank You!"
+        msg["From"] = "saichechare63@gmail.com"
+        msg["To"] = email
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login("saichechare63@gmail.com", "tsbs dspp rjln quud")
+        server.send_message(msg)  # ✅ Correct usage
+        server.quit()
+    except Exception as e:
+        return f"Error sending email: {e}", 500
+
+    # ✅ Render home page after email success
+    return render_template("index.html")
 
 
 if __name__ == '__main__':
